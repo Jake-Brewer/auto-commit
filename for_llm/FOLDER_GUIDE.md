@@ -18,4 +18,5 @@ This directory contains specialized primer files and other documents intended to
 - `_llm_multi-agent_primer.md`: Contains guidelines for collaboration between multiple AI agents.
 - `_llm_project_identification_strategy.md`: Documents the heuristics used to identify software projects in the filesystem.
 - `_llm_commit_message_guide.md`: A guide on how to write high-quality Git commit messages.
+- `_llm_troubleshooting.md`: A guide for diagnosing and recovering from tool and environment failures.
 - `FOLDER_GUIDE.md`: This file. 

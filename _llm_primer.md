@@ -19,6 +19,7 @@
 3. **Specialized Primers** (Reference Only)
    - **_llm_multi-agent_primer.md** - Guidelines for multi-agent collaboration
    - **_llm_extraction_primer.md** - Guidelines for component extraction
+   - **_llm_troubleshooting.md** - A guide for diagnosing and recovering from tool and environment failures.
    - These are referenced but not overridden by the core primer
 
 ## Core Principles
