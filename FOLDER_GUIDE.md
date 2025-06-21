@@ -17,4 +17,6 @@ This is the root directory for the `auto-commit` utility project.
 
 ## Files
 - `_llm_primer.md`: Core behavioral standards and critical instructions for LLM agents working on this project.
+- `REQUIREMENTS.md`: The functional and non-functional requirements for the `auto-commit` agent.
+- `DESIGN.md`: The high-level system design for the `auto-commit` agent.
 - `for_llm_todo.md`: A real-time task list for the AI assistant. 
