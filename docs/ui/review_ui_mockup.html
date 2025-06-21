@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Commit Review Queue</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        h1 {
+            color: #343a40;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .review-card {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .file-info {
+            margin-bottom: 1.5rem;
+        }
+        .file-info .project {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .file-info .path {
+            font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+            color: #6c757d;
+            display: block;
+            margin-top: 0.25rem;
+            background-color: #e9ecef;
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+        .pattern-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            box-sizing: border-box;
+        }
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .action-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-project-ignore { background-color: #ffc107; color: #212529; }
+        .btn-project-ignore:hover { background-color: #e0a800; }
+
+        .btn-project-include { background-color: #28a745; color: white; }
+        .btn-project-include:hover { background-color: #218838; }
+        
+        .btn-global-ignore { background-color: #dc3545; color: white; }
+        .btn-global-ignore:hover { background-color: #c82333; }
+
+        .btn-global-include { background-color: #17a2b8; color: white; }
+        .btn-global-include:hover { background-color: #138496; }
+
+        .btn-skip { background-color: #6c757d; color: white; }
+        .btn-skip:hover { background-color: #5a6268; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Auto-Commit: Files for Review</h1>
+
+        <!-- Sample Review Card 1 -->
+        <div class="review-card">
+            <div class="file-info">
+                <span class="project">cursor-projects/website</span>
+                <span class="path">/src/logs/user_session.log</span>
+            </div>
+            <label for="pattern1">Pattern:</label>
+            <input type="text" id="pattern1" class="pattern-input" value="user_session.log">
+            <div class="actions">
+                <div class="action-group">
+                    <button class="btn btn-project-ignore">Ignore in Project</button>
+                    <button class="btn btn-project-include">Include in Project</button>
+                </div>
+                <div class="action-group">
+                    <button class="btn btn-global-ignore">Ignore Globally</button>
+                    <button class="btn btn-global-include">Include Globally</button>
+                </div>
+                <button class="btn btn-skip">Skip</button>
+            </div>
+        </div>
+
+        <!-- Sample Review Card 2 -->
+        <div class="review-card">
+            <div class="file-info">
+                <span class="project">personal/notes-app</span>
+                <span class="path">/dist/assets/vendor.js.map</span>
+            </div>
+            <label for="pattern2">Pattern:</label>
+            <input type="text" id="pattern2" class="pattern-input" value="*.js.map">
+            <div class="actions">
+                <div class="action-group">
+                    <button class="btn btn-project-ignore">Ignore in Project</button>
+                    <button class="btn btn-project-include">Include in Project</button>
+                </div>
+                <div class="action-group">
+                    <button class="btn btn-global-ignore">Ignore Globally</button>
+                    <button class="btn btn-global-include">Include Globally</button>
+                </div>
+                <button class="btn btn-skip">Skip</button>
+            </div>
+        </div>
+
+         <!-- Sample Review Card 3 -->
+         <div class="review-card">
+            <div class="file-info">
+                <span class="project">auto-commit</span>
+                <span class="path">/temp_output.tmp</span>
+            </div>
+            <label for="pattern3">Pattern:</label>
+            <input type="text" id="pattern3" class="pattern-input" value="temp_output.tmp">
+            <div class="actions">
+                <div class="action-group">
+                    <button class="btn btn-project-ignore">Ignore in Project</button>
+                    <button class="btn btn-project-include">Include in Project</button>
+                </div>
+                <div class="action-group">
+                    <button class="btn btn-global-ignore">Ignore Globally</button>
+                    <button class="btn btn-global-include">Include Globally</button>
+                </div>
+                <button class="btn btn-skip">Skip</button>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html> 

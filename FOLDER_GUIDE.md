@@ -13,6 +13,7 @@ This is the root directory for the `auto-commit` utility project.
 - Docker or MCP-related utilities (belong in the `docker-command-center` project).
 
 ## Subfolders
+- `docs/`: Contains supplementary design documents, such as UI mockups.
 - `for_llm/`: Contains specialized primer files for different LLM agent functions.
 
 ## Files
