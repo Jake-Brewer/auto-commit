@@ -92,6 +92,14 @@ When suggesting or working with files in this project, follow these guidelines:
    - Flag potentially obsolete files for review
    - Keep file and subfolder lists complete and current at all times
 
+## Documentation and Diagram Standards
+
+- **Approved Formats**: When creating documentation or diagrams, the following formats are approved for use:
+  - Single-file HTML (containing its own JS and CSS).
+  - Mermaid (for diagrams embedded in Markdown).
+  - Markdown (`.md`).
+  - PlantUML (for sequence diagrams, use cases, etc.).
+
 ## Todo File Standards
 
 1. **Todo File Naming**:

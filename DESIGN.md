@@ -33,7 +33,7 @@ graph TD;
 
 ### 3.4. LLM Interface
 - **Technology**: A dedicated Python class (`LLMCommitGenerator`).
-- **Responsibility**: Abstracts all interaction with the LLM. It will construct the prompt, handle API requests (e.g., via `curl` to the local Docker container), parse the response, and manage errors and retries.
+- **Responsibility**: Abstracts all interaction with the LLM. It will construct the prompt, handle API requests to the local Docker container, parse the response, and manage errors and retries.
 
 ### 3.5. Data Models
 - **`FileChangeEvent`**: A simple data object containing information about the file change, such as `event_type` (created, modified, deleted) and `file_path`.
@@ -49,4 +49,5 @@ graph TD;
 ## 5. Error Handling Strategy
 
 - **Watcher Errors**: The watcher will log any errors during monitoring but will attempt to continue running.
-- **Worker Errors**: If a worker fails to process a commit (e.g., LLM is down, Git command fails), it will log a detailed error, and the `FileChangeEvent` will be moved to a separate "failed events" queue for later inspection. The worker will then proceed to the next item in the main queue. 
+- **Worker Errors**: If a worker fails to process a commit due to a Git or file system error, it will log the issue and move the event to a failed queue for later inspection.
+- **LLM Failure Fallback**: If the primary local LLM is unresponsive after multiple retries, the system will not use an external service. Instead, it will create a new high-priority issue in the "Project Catalog" Linear project. This issue will contain the `diff` and a request for a commit message. The agent will then periodically check for this issue to be resolved, retrieving the commit message from the issue description or comments once it is available. This maintains data privacy and follows a modular, asynchronous pattern. 
