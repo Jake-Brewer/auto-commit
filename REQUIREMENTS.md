@@ -28,12 +28,58 @@ This document outlines the functional and non-functional requirements for the `a
 - **REQ-NF-01**: **Performance**: The file monitoring process must be lightweight and have minimal impact on system performance.
 - **REQ-NF-02**: **Reliability**: The system must be resilient to LLM API failures, falling back to a default commit message and logging the error if necessary.
 - **REQ-NF-03**: **Security**: The system must not expose any sensitive information, such as API keys, in its logs or commit history.
+- **REQ-N-04**: The system **shall** be designed in a modular fashion to allow for future expansion, such as supporting different version control systems or LLM providers.
 
-## 4. Assumptions and Constraints
+## 4. File Inclusion/Exclusion Logic
 
-*As of the creation of this document, the following assumptions are being made:*
+This section details the logic for determining whether a new, untracked file should be committed, ignored, or flagged for user review.
 
-- **A-01**: **Configuration**: The list of folders to be monitored will be specified in a local `config.json` file.
-- **A-02**: **LLM Choice**: The primary LLM for this service will be the locally running `sequentialthought` instance accessible via its Docker container.
-- **A-03**: **Conflict Handling**: The system will assume it has primary control over the repositories. It will not perform `git pull` or `git push` operations and will only manage the local commit history. It will halt operations on a given repository if the working directory is not clean for reasons other than its own changes.
-- **A-04**: **Change Size**: The system will process all detected changes without requiring human intervention, regardless of size. 
+### 4.1. Configuration File Hierarchy
+The system will use a hierarchy of configuration files to make decisions. The order of precedence is as follows:
+1.  **Project `.gitinclude`**: Highest priority. Patterns in this file force inclusion.
+2.  **Global `.gitinclude`**: Second priority.
+3.  **Project `.gitignore`**: Third priority.
+4.  **Global `.gitignore`**: Lowest priority.
+
+### 4.2. Default Ignore Patterns
+- **REQ-F-07**: The system **shall** maintain a hardcoded list of common file/folder patterns to ignore (e.g., `node_modules/`, `__pycache__/`, `*.log`, `data/`, `log/`).
+- **REQ-F-08**: A default ignore pattern **shall only** be added to a project's `.gitignore` if no files currently tracked in the repository match that pattern.
+
+### 4.3. Human-in-the-Loop for Ambiguous Files
+- **REQ-F-09**: If a new, untracked file is not covered by any pattern in the configuration hierarchy, it **shall** be added to a queue for human review.
+- **REQ-F-10**: The system **shall** provide a user interface for reviewing ambiguous files.
+- **REQ-F-11**: The review UI **shall** present the user with the following options for each file:
+    - Add a pattern to `project.gitignore` or `project.gitinclude`.
+    - Add a pattern to `global.gitignore` or `global.gitinclude`.
+    - Take no action for that file at either the project or global level (the default state, `gitdefault`).
+- **REQ-F-12**: Once a pattern covering a file is added to any of the four configuration files, the user **shall not** be prompted to review that file again.
+
+## 5. Assumptions and Constraints
+
+- **A-01**: The agent will run on the user's local machine with access to the file system and the ability to run Git commands.
+- **A-02**: A local Docker-hosted LLM (`sequentialthought`) is available and is the primary choice for generating commit messages.
+- **A-03**: The system will assume it has primary control over the repositories. It will halt operations on a given repository if the working directory is not clean for reasons other than its own changes.
+
+## 3. File Inclusion/Exclusion Logic
+
+This section details the logic for determining whether a new, untracked file should be committed, ignored, or flagged for user review.
+
+### 3.1. Configuration File Hierarchy
+The system will use a hierarchy of configuration files to make decisions. The order of precedence is as follows:
+1.  **Project `.gitinclude`**: Highest priority. Patterns in this file force inclusion.
+2.  **Global `.gitinclude`**: Second priority.
+3.  **Project `.gitignore`**: Third priority.
+4.  **Global `.gitignore`**: Lowest priority.
+
+### 3.2. Default Ignore Patterns
+- **REQ-F-07**: The system **shall** maintain a hardcoded list of common file/folder patterns to ignore (e.g., `node_modules/`, `__pycache__/`, `*.log`, `data/`, `log/`).
+- **REQ-F-08**: A default ignore pattern **shall only** be added to a project's `.gitignore` if no files currently tracked in the repository match that pattern.
+
+### 3.3. Human-in-the-Loop for Ambiguous Files
+- **REQ-F-09**: If a new, untracked file is not covered by any pattern in the configuration hierarchy, it **shall** be added to a queue for human review.
+- **REQ-F-10**: The system **shall** provide a user interface for reviewing ambiguous files.
+- **REQ-F-11**: The review UI **shall** present the user with the following options for each file:
+    - Add a pattern to `project.gitignore` or `project.gitinclude`.
+    - Add a pattern to `global.gitignore` or `global.gitinclude`.
+    - Take no action for that file at either the project or global level (the default state, `gitdefault`).
+- **REQ-F-12**: Once a pattern covering a file is added to any of the four configuration files, the user **shall not** be prompted to review that file again. 
