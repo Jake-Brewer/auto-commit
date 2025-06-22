@@ -1,5 +1,5 @@
 # Todo List for Kai
-# Last Updated: 2024-07-25T18:50:00Z
+# Last Updated: 2024-07-25T19:00:00Z
 
 ## Project Improvement Initiative
 
@@ -11,5 +11,5 @@
   - [x] `/docs`
   - [x] `/tests`
 - [x] 4. Review and improve `.github/workflows/ci.yml` (No improvements needed, already excellent)
-- [ ] 5. Update Linear project with latest status
-- [ ] 6. Create Linear issues for improvement tasks 
+- [x] 5. Update Linear project with latest status
+- [x] 6. Create Linear issues for improvement tasks 
