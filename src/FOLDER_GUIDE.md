@@ -14,4 +14,5 @@ This directory contains all the Python source code for the `auto-commit` agent.
 - Configuration files (belong in the root directory).
 
 ## Files
-- `main.py`: The main entry point for the `auto-commit` agent application. 
+- `main.py`: The main entry point for the `auto-commit` agent application.
+- `watcher.py`: Contains the file system monitoring logic using the `watchdog` library. 
