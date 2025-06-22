@@ -5,6 +5,7 @@ from config import load_config
 from git_ops import GitRepo
 from llm_comm import generate_commit_message
 from commit_worker import CommitWorkerPool
+from config_manager import ConfigurationManager
 
 
 def main():
@@ -29,8 +30,11 @@ def main():
     path_to_watch = config.watch_directory
     observer = start_watching(path_to_watch, event_queue)
 
+    # Initialize configuration manager
+    config_manager = ConfigurationManager(config.watch_directory)
+
     # Start the commit worker pool
-    worker_pool = CommitWorkerPool(event_queue, num_workers=2)
+    worker_pool = CommitWorkerPool(event_queue, config_manager, num_workers=2)
     worker_pool.start()
 
     last_commit_time = time.time()

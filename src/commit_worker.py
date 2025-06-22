@@ -13,6 +13,7 @@ from typing import Optional
 import logging
 
 from watchdog.events import FileSystemEvent
+from config_manager import ConfigurationManager, FileAction
 
 
 class CommitWorker:
@@ -23,15 +24,18 @@ class CommitWorker:
     and orchestrating the analysis and commit process.
     """
     
-    def __init__(self, event_queue: Queue, worker_id: int = 0):
+    def __init__(self, event_queue: Queue, config_manager: ConfigurationManager, 
+                 worker_id: int = 0):
         """
         Initialize the CommitWorker.
         
         Args:
             event_queue: Thread-safe queue containing file system events
+            config_manager: Configuration manager for file filtering
             worker_id: Unique identifier for this worker instance
         """
         self.event_queue = event_queue
+        self.config_manager = config_manager
         self.worker_id = worker_id
         self.logger = logging.getLogger(f"CommitWorker-{worker_id}")
         self.running = False
@@ -60,10 +64,20 @@ class CommitWorker:
             self.logger.debug(
                 f"Processing event: {event.src_path} - {event.event_type}")
             
-            # For now, just log the event
-            # TODO: Integrate with configuration manager
-            # TODO: Integrate with git operations
-            # TODO: Integrate with LLM commit message generation
+            # Check file action based on configuration
+            action = self.config_manager.get_file_action(event.src_path)
+            
+            if action == FileAction.IGNORE:
+                self.logger.debug(f"Ignoring file: {event.src_path}")
+                return True
+            elif action == FileAction.REVIEW:
+                self.logger.info(f"File needs review: {event.src_path}")
+                # TODO: Add to review queue
+                return True
+            elif action == FileAction.INCLUDE:
+                self.logger.info(f"Processing file: {event.src_path}")
+                # TODO: Integrate with git operations
+                # TODO: Integrate with LLM commit message generation
             
             self.logger.info(
                 f"Worker {self.worker_id} processed: {event.src_path}")
@@ -112,15 +126,18 @@ class CommitWorkerPool:
     Manages a pool of CommitWorker threads for processing file change events.
     """
     
-    def __init__(self, event_queue: Queue, num_workers: int = 2):
+    def __init__(self, event_queue: Queue, config_manager: ConfigurationManager,
+                 num_workers: int = 2):
         """
         Initialize the CommitWorkerPool.
         
         Args:
             event_queue: Thread-safe queue containing file system events
+            config_manager: Configuration manager for file filtering
             num_workers: Number of worker threads to create
         """
         self.event_queue = event_queue
+        self.config_manager = config_manager
         self.num_workers = num_workers
         self.workers: list[CommitWorker] = []
         self.executor: Optional[ThreadPoolExecutor] = None
@@ -137,7 +154,8 @@ class CommitWorkerPool:
         
         # Create and start workers
         for i in range(self.num_workers):
-            worker = CommitWorker(self.event_queue, worker_id=i)
+            worker = CommitWorker(self.event_queue, self.config_manager, 
+                                worker_id=i)
             self.workers.append(worker)
             
             # Submit worker to thread pool
