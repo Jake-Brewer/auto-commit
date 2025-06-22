@@ -16,4 +16,5 @@ This directory contains all the Python source code for the `auto-commit` agent.
 ## Files
 - `main.py`: The main entry point for the `auto-commit` agent application.
 - `watcher.py`: Contains the file system monitoring logic using the `watchdog` library.
-- `config.py`: Handles loading and validation of the application's YAML configuration. 
+- `config.py`: Handles loading and validation of the application's YAML configuration.
+- `file_filter.py`: Implements the logic for including/excluding file paths based on glob patterns. 

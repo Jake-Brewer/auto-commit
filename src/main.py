@@ -2,6 +2,7 @@ import time
 from queue import Queue
 from watcher import start_watching
 from config import load_config
+from file_filter import should_process_path
 
 
 def main():
@@ -24,10 +25,15 @@ def main():
         while True:
             if not event_queue.empty():
                 event = event_queue.get()
-                print(
-                    f"Main loop consumed event: {event.src_path} - "
-                    f"{event.event_type}"
-                )
+                if should_process_path(
+                    event.src_path,
+                    config.include_patterns,
+                    config.exclude_patterns
+                ):
+                    print(
+                        f"Processing event: {event.src_path} - "
+                        f"{event.event_type}"
+                    )
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
