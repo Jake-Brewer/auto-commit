@@ -7,6 +7,7 @@ class GitRepo:
     """A wrapper around a GitPython repository."""
 
     def __init__(self, path: str):
+        self.repo_path = path
         try:
             self.repo = git.Repo(path, search_parent_directories=True)
             print("Successfully loaded Git repository at: " f"{self.repo.working_dir}")
@@ -29,6 +30,12 @@ class GitRepo:
         """Stages all changes."""
         if self.repo:
             self.repo.git.add(A=True)
+
+    def add_files(self, files: list):
+        """Stages specific files."""
+        if self.repo and files:
+            for file in files:
+                self.repo.git.add(file)
 
     def commit(self, message: str) -> Optional[git.Commit]:
         """Creates a new commit."""

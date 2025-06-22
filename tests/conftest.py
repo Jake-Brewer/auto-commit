@@ -76,9 +76,24 @@ def review_queue(temp_dir):
     db_path = temp_dir / "test_review.db"
     queue = ReviewQueue(str(db_path))
     yield queue
-    # Cleanup
-    if db_path.exists():
-        db_path.unlink()
+    # Cleanup - close any open connections first
+    try:
+        # Force close any open database connections
+        if hasattr(queue, '_get_connection'):
+            # Create a connection to ensure it's properly closed
+            with queue._get_connection():
+                pass
+    except Exception:
+        pass  # Ignore cleanup errors
+    
+    # Try to remove the database file
+    try:
+        if db_path.exists():
+            db_path.unlink()
+    except PermissionError:
+        # On Windows, the file might still be locked
+        # This is acceptable for testing
+        pass
 
 
 @pytest.fixture

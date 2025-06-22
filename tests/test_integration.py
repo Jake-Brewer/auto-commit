@@ -216,7 +216,12 @@ class TestFileWatchingIntegration:
         from llm_comm import LLMCommitGenerator
 
         llm_config = LLMConfig()
-        llm_generator = LLMCommitGenerator(llm_config)
+        llm_generator = LLMCommitGenerator(
+            base_url=llm_config.base_url,
+            model_name=llm_config.model_name,
+            enable_linear_fallback=llm_config.enable_linear_fallback,
+            fallback_team_id=llm_config.fallback_team_id,
+        )
         git_repo = GitRepo(str(temp_dir))
 
         # Create and stage changes
@@ -313,7 +318,12 @@ class TestErrorHandlingIntegration:
                 from llm_comm import LLMCommitGenerator
 
                 llm_config = LLMConfig(enable_linear_fallback=True)
-                llm_generator = LLMCommitGenerator(llm_config)
+                llm_generator = LLMCommitGenerator(
+                    base_url=llm_config.base_url,
+                    model_name=llm_config.model_name,
+                    enable_linear_fallback=llm_config.enable_linear_fallback,
+                    fallback_team_id=llm_config.fallback_team_id,
+                )
 
                 # Should fallback to Linear
                 result = llm_generator.generate_commit_message("test diff")

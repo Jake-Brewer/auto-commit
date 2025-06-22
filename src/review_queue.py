@@ -44,13 +44,28 @@ class ReviewItem:
         data = dict(row)
         for key, value in data.items():
             if "at" in key and value and isinstance(value, str):
-                try:
-                    data[key] = datetime.fromisoformat(value)
-                except ValueError:
-                    # Handle cases where the timestamp might not be a full isoformat
-                    data[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+                # Only try to parse datetime fields, not file paths
+                if key in ["created_at", "resolved_at"]:
+                    try:
+                        data[key] = datetime.fromisoformat(value)
+                    except ValueError:
+                        try:
+                            # Handle cases where the timestamp might not be a full isoformat
+                            data[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+                        except ValueError:
+                            try:
+                                # Try without microseconds
+                                data[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                            except ValueError:
+                                # If all parsing fails, keep as string and log warning
+                                logger.warning(f"Could not parse datetime for {key}: {value}")
+                                data[key] = None
         if "metadata" in data and isinstance(data["metadata"], str):
-            data["metadata"] = json.loads(data["metadata"])
+            try:
+                data["metadata"] = json.loads(data["metadata"])
+            except json.JSONDecodeError:
+                logger.warning(f"Could not parse metadata JSON: {data['metadata']}")
+                data["metadata"] = None
         return cls(**data)
 
 
@@ -142,6 +157,12 @@ class ReviewQueue:
             except sqlite3.Error as e:
                 logger.error(f"Failed to add file to review queue: {e}")
                 return None
+
+    def add_file(self, file_path: str, reason: str, metadata: Optional[Dict[str, Any]] = None) -> Optional[int]:
+        """
+        Alias for add_item to maintain backward compatibility with tests.
+        """
+        return self.add_item(file_path, reason, metadata)
 
     def get_item(self, item_id: int) -> Optional[ReviewItem]:
         """
