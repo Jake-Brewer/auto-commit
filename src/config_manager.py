@@ -395,7 +395,7 @@ class ConfigurationManager:
             for file_path in tracked_files:
                 # Convert pattern for fnmatch
                 if self._matches_pattern(
-                    Path(file_path), pattern, git_repo.repo.working_dir
+                    Path(git_repo.repo_path) / file_path, pattern, Path(git_repo.repo_path)
                 ):
                     return True
 

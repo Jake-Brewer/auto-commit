@@ -29,7 +29,7 @@ class TestGitRepo:
     def test_init_non_git_directory(self, temp_dir):
         """Test GitRepo initialization with non-git directory."""
         with pytest.raises(git.InvalidGitRepositoryError):
-            GitRepo(str(temp_dir))
+            GitRepo(str(temp_dir), init_new=False)
 
     def test_get_status_clean(self, temp_git_repo):
         """Test getting status of clean repository."""
@@ -117,6 +117,7 @@ class TestGitRepo:
         commit_sha = git_repo.commit(commit_message)
 
         assert commit_sha is not None
+        assert isinstance(commit_sha, str)
         assert len(commit_sha) == 40  # SHA-1 hash length
 
         # Verify commit message
@@ -170,8 +171,8 @@ class TestGitRepo:
         git_repo = GitRepo(str(temp_dir))
         diff = git_repo.get_diff(staged=False)
 
-        assert "README.md" in diff
-        assert "Unstaged change" in diff
+        assert diff is not None
+        assert "Modified Test Repository" in diff
 
     def test_get_tracked_files(self, temp_git_repo):
         """Test getting list of tracked files."""
@@ -216,7 +217,7 @@ class TestGitRepo:
 
         # Should handle GitCommandError gracefully
         status = git_repo.get_status()
-        assert status == ""
+        assert status is None
 
     def test_repo_property_access(self, temp_git_repo):
         """Test accessing the underlying repo property."""

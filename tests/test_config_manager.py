@@ -230,7 +230,7 @@ class TestConfigurationManager:
 
         assert not success
 
-    @patch("src.config_manager.GitRepo")
+    @patch("src.git_ops.GitRepo")
     def test_safe_add_default_ignores(
         self, mock_git_repo_class, config_manager, temp_dir
     ):
@@ -238,6 +238,8 @@ class TestConfigurationManager:
         # Mock GitRepo
         mock_repo = Mock()
         mock_repo.repo = Mock()
+        mock_repo.repo_path = str(temp_dir)
+        mock_repo.repo.working_dir = str(temp_dir)
         mock_repo.get_tracked_files.return_value = ["README.md", "src/main.py"]
         mock_git_repo_class.return_value = mock_repo
 
@@ -253,7 +255,7 @@ class TestConfigurationManager:
         assert "__pycache__/" in content
         assert "*.log" in content
 
-    @patch("src.config_manager.GitRepo")
+    @patch("src.git_ops.GitRepo")
     def test_safe_add_default_ignores_with_conflicts(
         self, mock_git_repo_class, config_manager, temp_dir
     ):
@@ -261,6 +263,8 @@ class TestConfigurationManager:
         # Mock GitRepo with tracked files that match some default patterns
         mock_repo = Mock()
         mock_repo.repo = Mock()
+        mock_repo.repo_path = str(temp_dir)
+        mock_repo.repo.working_dir = str(temp_dir)
         mock_repo.get_tracked_files.return_value = [
             "build/config.py",
             "dist/package.tar.gz",
