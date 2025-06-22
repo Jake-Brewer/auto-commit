@@ -46,4 +46,17 @@ class GitRepo:
             return None
         
         target = commit if commit != "STAGED" else None
-        return self.repo.git.diff(target) 
+        return self.repo.git.diff(target)
+    
+    def get_tracked_files(self) -> list:
+        """Returns a list of all tracked files in the repository."""
+        if not self.repo:
+            return []
+        
+        try:
+            # Use git ls-files to get all tracked files
+            tracked_files = self.repo.git.ls_files().splitlines()
+            return tracked_files
+        except Exception as e:
+            print(f"Error getting tracked files: {e}")
+            return [] 
