@@ -8,347 +8,284 @@ flagged as ambiguous and require human review before commit decisions.
 import json
 import logging
 import sqlite3
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class ReviewItem:
     """Represents a file that needs review."""
 
-    id: Optional[int]
+    id: int
     file_path: str
-    event_type: str
-    timestamp: datetime
     reason: str
-    status: str = "pending"  # pending, approved, rejected
+    status: str = "pending"
+    decision: Optional[str] = None
+    add_to_include: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.now)
+    resolved_at: Optional[datetime] = None
     metadata: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         data = asdict(self)
-        data["timestamp"] = self.timestamp.isoformat()
+        for key, value in data.items():
+            if isinstance(value, datetime):
+                data[key] = value.isoformat()
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ReviewItem":
-        """Create from dictionary."""
-        data["timestamp"] = datetime.fromisoformat(data["timestamp"])
+    def from_row(cls, row: sqlite3.Row) -> "ReviewItem":
+        """Create a ReviewItem from a database row."""
+        data = dict(row)
+        for key, value in data.items():
+            if "at" in key and value and isinstance(value, str):
+                try:
+                    data[key] = datetime.fromisoformat(value)
+                except ValueError:
+                    # Handle cases where the timestamp might not be a full isoformat
+                    data[key] = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+        if "metadata" in data and isinstance(data["metadata"], str):
+            data["metadata"] = json.loads(data["metadata"])
         return cls(**data)
 
 
 class ReviewQueue:
-    """
-    SQLite-based persistent queue for files requiring human review.
+    """A thread-safe queue for managing files that need manual review."""
 
-    This queue stores files that have ambiguous include/ignore rules
-    and need human decision before proceeding with commit operations.
-    """
-
-    def __init__(self, db_path: str = "review_queue.db"):
+    def __init__(self, db_path: str):
         """
         Initialize the ReviewQueue.
 
         Args:
-            db_path: Path to the SQLite database file
+            db_path: The path to the SQLite database file.
         """
-        self.db_path = Path(db_path)
-        self.logger = logging.getLogger("ReviewQueue")
+        self.db_path = db_path
+        self._lock = Lock()
         self._init_database()
 
-    def _init_database(self):
+    def _get_connection(self) -> sqlite3.Connection:
+        """Get a thread-safe SQLite connection."""
+        return sqlite3.connect(self.db_path, check_same_thread=False)
+
+    def _init_database(self) -> None:
         """Initialize the SQLite database and create tables if needed."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute(
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS review_items (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        file_path TEXT NOT NULL,
-                        event_type TEXT NOT NULL,
-                        timestamp TEXT NOT NULL,
-                        reason TEXT NOT NULL,
-                        status TEXT DEFAULT 'pending',
-                        metadata TEXT,
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        id INTEGER PRIMARY KEY,
+                        file_path TEXT NOT NULL UNIQUE,
+                        reason TEXT,
+                        status TEXT NOT NULL,
+                        decision TEXT,
+                        add_to_include TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        resolved_at TIMESTAMP,
+                        metadata TEXT
                     )
-                """
-                )
-
-                # Create index for faster queries
-                conn.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_status 
-                    ON review_items(status)
-                """
                 )
-
-                conn.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_file_path 
-                    ON review_items(file_path)
-                """
-                )
-
                 conn.commit()
-                self.logger.debug(f"Database initialized at {self.db_path}")
-
-        except Exception as e:
-            self.logger.error(f"Failed to initialize database: {e}")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to initialize database: {e}")
             raise
 
     def add_item(
-        self,
-        file_path: str,
-        event_type: str,
-        reason: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> int:
+        self, file_path: str, reason: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> Optional[int]:
         """
         Add a file to the review queue.
 
         Args:
-            file_path: Path to the file needing review
-            event_type: Type of file system event (created, modified, etc.)
-            reason: Reason why the file needs review
-            metadata: Optional additional metadata
+            file_path: The absolute path of the file to review.
+            reason: The reason why the file needs review.
+            metadata: Optional dictionary for additional data.
 
         Returns:
-            ID of the created review item
+            The ID of the newly added item, or the existing item's ID if the
+            file path is already in the queue. Returns None on failure.
         """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
-                    INSERT INTO review_items 
-                    (file_path, event_type, timestamp, reason, metadata)
-                    VALUES (?, ?, ?, ?, ?)
-                """,
-                    (
-                        file_path,
-                        event_type,
-                        datetime.now().isoformat(),
-                        reason,
-                        json.dumps(metadata) if metadata else None,
-                    ),
-                )
-
-                item_id = cursor.lastrowid
-                conn.commit()
-
-                self.logger.info(f"Added review item {item_id}: {file_path}")
-                return item_id
-
-        except Exception as e:
-            self.logger.error(f"Failed to add review item: {e}")
-            raise
-
-    def get_pending_items(self, limit: Optional[int] = None) -> List[ReviewItem]:
-        """
-        Get all pending review items.
-
-        Args:
-            limit: Maximum number of items to return
-
-        Returns:
-            List of pending ReviewItem objects
-        """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                query = """
-                    SELECT id, file_path, event_type, timestamp, reason, 
-                           status, metadata
-                    FROM review_items 
-                    WHERE status = 'pending'
-                    ORDER BY timestamp ASC
-                """
-
-                if limit:
-                    query += f" LIMIT {limit}"
-
-                cursor = conn.execute(query)
-                items = []
-
-                for row in cursor.fetchall():
-                    metadata = json.loads(row[6]) if row[6] else None
-                    item = ReviewItem(
-                        id=row[0],
-                        file_path=row[1],
-                        event_type=row[2],
-                        timestamp=datetime.fromisoformat(row[3]),
-                        reason=row[4],
-                        status=row[5],
-                        metadata=metadata,
+        with self._lock:
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT id FROM review_items WHERE file_path = ?", (file_path,)
                     )
-                    items.append(item)
+                    if existing_item := cursor.fetchone():
+                        logger.warning(
+                            f"File {file_path} is already in the review queue with ID {existing_item[0]}."
+                        )
+                        return existing_item[0]
 
-                self.logger.debug(f"Retrieved {len(items)} pending items")
-                return items
-
-        except Exception as e:
-            self.logger.error(f"Failed to get pending items: {e}")
-            return []
-
-    def update_item_status(self, item_id: int, status: str) -> bool:
-        """
-        Update the status of a review item.
-
-        Args:
-            item_id: ID of the review item
-            status: New status (pending, approved, rejected)
-
-        Returns:
-            True if update was successful
-        """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
-                    UPDATE review_items 
-                    SET status = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                """,
-                    (status, item_id),
-                )
-
-                if cursor.rowcount > 0:
+                    metadata_str = json.dumps(metadata) if metadata else None
+                    cursor.execute(
+                        """
+                        INSERT INTO review_items (file_path, reason, status, metadata, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (file_path, reason, "pending", metadata_str, datetime.now()),
+                    )
                     conn.commit()
-                    self.logger.info(f"Updated item {item_id} status to {status}")
-                    return True
-                else:
-                    self.logger.warning(f"No item found with ID {item_id}")
-                    return False
-
-        except Exception as e:
-            self.logger.error(f"Failed to update item status: {e}")
-            return False
+                    item_id = cursor.lastrowid
+                    logger.info(
+                        f"Added file to review queue: {file_path} (ID: {item_id})"
+                    )
+                    return item_id
+            except sqlite3.Error as e:
+                logger.error(f"Failed to add file to review queue: {e}")
+                return None
 
     def get_item(self, item_id: int) -> Optional[ReviewItem]:
         """
-        Get a specific review item by ID.
-
-        Args:
-            item_id: ID of the review item
-
-        Returns:
-            ReviewItem object or None if not found
+        Get a specific review item by its ID.
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
-                    SELECT id, file_path, event_type, timestamp, reason, 
-                           status, metadata
-                    FROM review_items 
-                    WHERE id = ?
-                """,
-                    (item_id,),
-                )
-
-                row = cursor.fetchone()
-                if row:
-                    metadata = json.loads(row[6]) if row[6] else None
-                    return ReviewItem(
-                        id=row[0],
-                        file_path=row[1],
-                        event_type=row[2],
-                        timestamp=datetime.fromisoformat(row[3]),
-                        reason=row[4],
-                        status=row[5],
-                        metadata=metadata,
-                    )
-
+            with self._get_connection() as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM review_items WHERE id = ?", (item_id,))
+                if row := cursor.fetchone():
+                    return ReviewItem.from_row(row)
                 return None
-
-        except Exception as e:
-            self.logger.error(f"Failed to get item {item_id}: {e}")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to get review item {item_id}: {e}")
             return None
+
+    def get_all_items(self, status: Optional[str] = None) -> List[ReviewItem]:
+        """
+        Get all items from the queue, optionally filtering by status.
+        """
+        try:
+            with self._get_connection() as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                query = "SELECT * FROM review_items"
+                params = []
+                if status:
+                    query += " WHERE status = ?"
+                    params.append(status)
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+                return [ReviewItem.from_row(row) for row in rows]
+        except sqlite3.Error as e:
+            logger.error(f"Failed to get review items: {e}")
+            return []
+
+    def get_pending_items(self) -> List[ReviewItem]:
+        return self.get_all_items(status="pending")
+
+    def get_resolved_items(self) -> List[ReviewItem]:
+        return self.get_all_items(status="resolved")
+
+    def resolve_item(
+        self, item_id: int, decision: str, add_to_include: Optional[str] = None
+    ) -> bool:
+        """
+        Mark an item as resolved with a specific decision.
+        """
+        if decision not in ["include", "ignore"]:
+            logger.error(f"Invalid decision '{decision}' for item {item_id}.")
+            return False
+
+        with self._lock:
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        """
+                        UPDATE review_items
+                        SET status = 'resolved', decision = ?, add_to_include = ?, resolved_at = ?
+                        WHERE id = ?
+                        """,
+                        (decision, add_to_include, datetime.now(), item_id),
+                    )
+                    conn.commit()
+                    success = cursor.rowcount > 0
+                    if success:
+                        logger.info(
+                            f"Resolved item {item_id} with decision '{decision}'."
+                        )
+                    else:
+                        logger.warning(f"Item {item_id} not found for resolution.")
+                    return success
+            except sqlite3.Error as e:
+                logger.error(f"Failed to resolve item {item_id}: {e}")
+                return False
 
     def remove_item(self, item_id: int) -> bool:
         """
-        Remove a review item from the queue.
-
-        Args:
-            item_id: ID of the review item to remove
-
-        Returns:
-            True if removal was successful
+        Delete an item from the queue.
         """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
-                    DELETE FROM review_items WHERE id = ?
-                """,
-                    (item_id,),
-                )
-
-                if cursor.rowcount > 0:
+        with self._lock:
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM review_items WHERE id = ?", (item_id,))
                     conn.commit()
-                    self.logger.info(f"Removed item {item_id}")
-                    return True
-                else:
-                    self.logger.warning(f"No item found with ID {item_id}")
-                    return False
+                    success = cursor.rowcount > 0
+                    if success:
+                        logger.info(f"Deleted item {item_id} from review queue.")
+                    else:
+                        logger.warning(
+                            f"Attempted to delete non-existent item {item_id}."
+                        )
+                    return success
+            except sqlite3.Error as e:
+                logger.error(f"Failed to delete item {item_id}: {e}")
+                return False
 
-        except Exception as e:
-            self.logger.error(f"Failed to remove item {item_id}: {e}")
-            return False
-
-    def get_stats(self) -> Dict[str, int]:
+    def clear_resolved_items(self) -> int:
         """
-        Get statistics about the review queue.
-
-        Returns:
-            Dictionary with queue statistics
+        Delete all resolved items from the queue.
         """
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
-                    SELECT status, COUNT(*) 
-                    FROM review_items 
-                    GROUP BY status
-                """
-                )
+        with self._lock:
+            try:
+                with self._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM review_items WHERE status = 'resolved'")
+                    count = cursor.rowcount
+                    conn.commit()
+                    logger.info(f"Cleared {count} resolved items from review queue.")
+                    return count
+            except sqlite3.Error as e:
+                logger.error(f"Failed to clear resolved items: {e}")
+                return 0
 
-                stats = {"total": 0}
-                for status, count in cursor.fetchall():
-                    stats[status] = count
-                    stats["total"] += count
-
-                self.logger.debug(f"Queue stats: {stats}")
-                return stats
-
-        except Exception as e:
-            self.logger.error(f"Failed to get stats: {e}")
-            return {"total": 0}
-
-    def clear_completed(self) -> int:
+    def get_stats(self) -> Dict[str, Any]:
         """
-        Remove all approved and rejected items from the queue.
-
-        Returns:
-            Number of items removed
+        Get statistics about the items in the queue.
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    """
-                    DELETE FROM review_items 
-                    WHERE status IN ('approved', 'rejected')
-                """
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM review_items")
+                total_items = cursor.fetchone()[0]
+                cursor.execute(
+                    "SELECT COUNT(*) FROM review_items WHERE status = 'pending'"
                 )
-
-                removed_count = cursor.rowcount
-                conn.commit()
-
-                self.logger.info(f"Cleared {removed_count} completed items")
-                return removed_count
-
-        except Exception as e:
-            self.logger.error(f"Failed to clear completed items: {e}")
-            return 0
+                pending_items = cursor.fetchone()[0]
+                cursor.execute(
+                    "SELECT COUNT(*) FROM review_items WHERE status = 'resolved'"
+                )
+                resolved_items = cursor.fetchone()[0]
+                return {
+                    "total_items": total_items,
+                    "pending_items": pending_items,
+                    "resolved_items": resolved_items,
+                }
+        except sqlite3.Error as e:
+            logger.error(f"Failed to get queue stats: {e}")
+            return {
+                "total_items": 0,
+                "pending_items": 0,
+                "resolved_items": 0,
+                "error": str(e),
+            }

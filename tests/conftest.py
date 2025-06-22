@@ -2,6 +2,7 @@
 Pytest configuration and common fixtures for auto-commit tests.
 """
 
+import asyncio
 import os
 import shutil
 import sqlite3
@@ -9,13 +10,15 @@ import sqlite3
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from queue import Queue
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from git import Repo
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from commit_worker import CommitWorker
 from config import AppConfig, LLMConfig
 from config_manager import ConfigurationManager
 from git_ops import GitRepo

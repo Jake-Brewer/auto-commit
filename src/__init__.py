@@ -1,1 +1,1 @@
-# Source package for auto-commit project 
+# Source package for auto-commit project
