@@ -8,7 +8,8 @@ to generate meaningful commit messages from git diffs.
 import requests
 import json
 import logging
-from typing import Optional
+from typing import Optional, List
+from src.linear_fallback import LinearFallbackManager, LinearFallbackConfig, LinearFallbackError
 
 
 class LLMCommitGenerator:
@@ -20,17 +21,29 @@ class LLMCommitGenerator:
     """
     
     def __init__(self, base_url: str = "http://localhost:11434", 
-                 model_name: str = "sequentialthought"):
+                 model_name: str = "sequentialthought",
+                 enable_linear_fallback: bool = True,
+                 fallback_team_id: str = "b5f1d099-acc2-4e51-a415-76c00c00f23b"):
         """
         Initialize the LLM commit generator.
         
         Args:
             base_url: Base URL of the local LLM service
             model_name: Name of the model to use
+            enable_linear_fallback: Whether to use Linear fallback
+            fallback_team_id: Linear team ID for fallback issues
         """
         self.base_url = base_url.rstrip('/')
         self.model_name = model_name
         self.logger = logging.getLogger("LLMCommitGenerator")
+        
+        # Setup Linear fallback if enabled
+        self.linear_fallback = None
+        if enable_linear_fallback:
+            fallback_config = LinearFallbackConfig(
+                fallback_team_id=fallback_team_id
+            )
+            self.linear_fallback = LinearFallbackManager(fallback_config)
         
         # Test connection on initialization
         self._test_connection()
@@ -118,12 +131,14 @@ Commit message:"""
             self.logger.error(f"Error parsing LLM response: {e}")
             return None
             
-    def generate_commit_message(self, diff: str) -> Optional[str]:
+    def generate_commit_message(self, diff: str, 
+                                file_paths: Optional[List[str]] = None) -> Optional[str]:
         """
         Generate a commit message from a git diff using the LLM.
         
         Args:
             diff: The git diff to analyze
+            file_paths: Optional list of changed file paths
             
         Returns:
             Generated commit message or None if failed
@@ -149,7 +164,24 @@ Commit message:"""
             else:
                 self.logger.warning(f"Invalid LLM response: {commit_msg}")
                 
-        # Fallback to simple heuristic
+        # Try Linear fallback if enabled and LLM failed
+        if self.linear_fallback and file_paths:
+            try:
+                self.logger.info("LLM unavailable, using Linear fallback")
+                issue_id = self.linear_fallback.create_commit_message_request(
+                    diff, file_paths
+                )
+                
+                # Poll for response (this will block)
+                commit_msg = self.linear_fallback.poll_for_commit_message(issue_id)
+                if commit_msg:
+                    self.logger.info(f"Received commit message via Linear: {commit_msg}")
+                    return commit_msg
+                    
+            except LinearFallbackError as e:
+                self.logger.error(f"Linear fallback failed: {e}")
+                
+        # Final fallback to simple heuristic
         return self._fallback_commit_message(diff)
         
     def _fallback_commit_message(self, diff: str) -> str:

@@ -18,4 +18,13 @@ exclude_patterns:
   - ".*"          # Ignore hidden files and directories (e.g., .git, .vscode)
   - "__pycache__" # Ignore Python cache
   - "*.tmp"       # Ignore temporary files
-  - "*.swp"       # Ignore vim swap files 
+  - "*.swp"       # Ignore vim swap files
+
+# LLM Configuration
+llm:
+  base_url: "http://localhost:11434"
+  model_name: "sequentialthought"
+  timeout_seconds: 30
+  enable_linear_fallback: true
+  fallback_team_id: "b5f1d099-acc2-4e51-a415-76c00c00f23b"
+  fallback_project_id: "d7372bf1-e09e-4ad6-9180-3af9f5571668" 
