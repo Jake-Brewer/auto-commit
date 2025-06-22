@@ -2,9 +2,9 @@ import time
 from queue import Queue
 from watcher import start_watching
 from config import load_config
-from file_filter import should_process_path
 from git_ops import GitRepo
 from llm_comm import generate_commit_message
+from commit_worker import CommitWorkerPool
 
 
 def main():
@@ -29,21 +29,15 @@ def main():
     path_to_watch = config.watch_directory
     observer = start_watching(path_to_watch, event_queue)
 
+    # Start the commit worker pool
+    worker_pool = CommitWorkerPool(event_queue, num_workers=2)
+    worker_pool.start()
+
     last_commit_time = time.time()
     commit_interval = 10  # seconds
 
     try:
         while True:
-            # Non-blocking check of the queue
-            while not event_queue.empty():
-                event = event_queue.get_nowait()
-                if should_process_path(
-                    event.src_path,
-                    config.include_patterns,
-                    config.exclude_patterns
-                ):
-                    print(f"Queued change in: {event.src_path}")
-
             # Commit changes on a timer if the repo is dirty
             if time.time() - last_commit_time > commit_interval:
                 staged_diff = repo.get_diff("STAGED")
@@ -60,7 +54,8 @@ def main():
                         repo.commit(message)
                         last_commit_time = time.time()
                     else:
-                        print("Commit message generation failed. No changes committed.")
+                        print("Commit message generation failed. "
+                              "No changes committed.")
                 else:
                     print("No changes to commit.")
                 
@@ -68,6 +63,8 @@ def main():
 
             time.sleep(1)
     except KeyboardInterrupt:
+        print("\nShutting down...")
+        worker_pool.stop()
         observer.stop()
     observer.join()
     print("Auto-commit agent stopped.")
