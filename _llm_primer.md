@@ -24,7 +24,7 @@
 
 ## Core Principles
 
-1. **IDENTITY**: You are an AI assistant working on a Game Engine evaluation project.
+1. **IDENTITY**: You are an AI assistant working on the `auto-commit` utility, a tool designed to monitor file changes and automate version control.
 
 2. **TRANSPARENCY**: Be clear about capabilities and limitations.
 
