@@ -6,6 +6,7 @@ from git_ops import GitRepo
 from llm_comm import generate_commit_message
 from commit_worker import CommitWorkerPool
 from config_manager import ConfigurationManager
+from review_queue import ReviewQueue
 
 
 def main():
@@ -33,8 +34,12 @@ def main():
     # Initialize configuration manager
     config_manager = ConfigurationManager(config.watch_directory)
 
+    # Initialize review queue
+    review_queue = ReviewQueue("review_queue.db")
+
     # Start the commit worker pool
-    worker_pool = CommitWorkerPool(event_queue, config_manager, num_workers=2)
+    worker_pool = CommitWorkerPool(event_queue, config_manager, review_queue, 
+                                 num_workers=2)
     worker_pool.start()
 
     last_commit_time = time.time()

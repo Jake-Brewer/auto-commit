@@ -14,6 +14,7 @@ import logging
 
 from watchdog.events import FileSystemEvent
 from config_manager import ConfigurationManager, FileAction
+from review_queue import ReviewQueue
 
 
 class CommitWorker:
@@ -25,17 +26,19 @@ class CommitWorker:
     """
     
     def __init__(self, event_queue: Queue, config_manager: ConfigurationManager, 
-                 worker_id: int = 0):
+                 review_queue: ReviewQueue, worker_id: int = 0):
         """
         Initialize the CommitWorker.
         
         Args:
             event_queue: Thread-safe queue containing file system events
             config_manager: Configuration manager for file filtering
+            review_queue: Queue for files needing human review
             worker_id: Unique identifier for this worker instance
         """
         self.event_queue = event_queue
         self.config_manager = config_manager
+        self.review_queue = review_queue
         self.worker_id = worker_id
         self.logger = logging.getLogger(f"CommitWorker-{worker_id}")
         self.running = False
@@ -72,7 +75,12 @@ class CommitWorker:
                 return True
             elif action == FileAction.REVIEW:
                 self.logger.info(f"File needs review: {event.src_path}")
-                # TODO: Add to review queue
+                # Add to review queue
+                self.review_queue.add_item(
+                    file_path=event.src_path,
+                    event_type=event.event_type,
+                    reason="Ambiguous include/ignore rules"
+                )
                 return True
             elif action == FileAction.INCLUDE:
                 self.logger.info(f"Processing file: {event.src_path}")
@@ -127,17 +135,19 @@ class CommitWorkerPool:
     """
     
     def __init__(self, event_queue: Queue, config_manager: ConfigurationManager,
-                 num_workers: int = 2):
+                 review_queue: ReviewQueue, num_workers: int = 2):
         """
         Initialize the CommitWorkerPool.
         
         Args:
             event_queue: Thread-safe queue containing file system events
             config_manager: Configuration manager for file filtering
+            review_queue: Queue for files needing human review
             num_workers: Number of worker threads to create
         """
         self.event_queue = event_queue
         self.config_manager = config_manager
+        self.review_queue = review_queue
         self.num_workers = num_workers
         self.workers: list[CommitWorker] = []
         self.executor: Optional[ThreadPoolExecutor] = None
@@ -155,7 +165,7 @@ class CommitWorkerPool:
         # Create and start workers
         for i in range(self.num_workers):
             worker = CommitWorker(self.event_queue, self.config_manager, 
-                                worker_id=i)
+                                self.review_queue, worker_id=i)
             self.workers.append(worker)
             
             # Submit worker to thread pool

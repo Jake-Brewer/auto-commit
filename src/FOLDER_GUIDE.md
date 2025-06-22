@@ -21,4 +21,5 @@ This directory contains all the Python source code for the `auto-commit` agent.
 - `commit_worker.py`: Worker thread pool for processing file change events. Implements CommitWorker and CommitWorkerPool classes.
 - `file_filter.py`: Implements the logic for including/excluding file paths based on glob patterns.
 - `git_ops.py`: Provides a wrapper for Git operations using the GitPython library.
-- `llm_comm.py`: Handles communication with a Large Language Model for commit message generation. 
+- `llm_comm.py`: Handles communication with a Large Language Model for commit message generation.
+- `review_queue.py`: SQLite-based persistent queue for files requiring human review before commit decisions. 
