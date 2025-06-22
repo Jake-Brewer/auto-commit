@@ -1,0 +1,21 @@
+# Configuration for the auto-commit agent
+
+# The directory to watch for file changes.
+watch_directory: .
+
+# Logging level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL)
+log_level: INFO
+
+# Glob patterns for files to include.
+# Defaults to all files if not specified.
+include_patterns:
+  - "*.py"
+  - "*.md"
+  - "*.txt"
+
+# Glob patterns for files/directories to exclude.
+exclude_patterns:
+  - ".*"          # Ignore hidden files and directories (e.g., .git, .vscode)
+  - "__pycache__" # Ignore Python cache
+  - "*.tmp"       # Ignore temporary files
+  - "*.swp"       # Ignore vim swap files 

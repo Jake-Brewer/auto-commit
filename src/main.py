@@ -1,18 +1,23 @@
 import time
 from queue import Queue
 from watcher import start_watching
+from config import load_config
 
 
 def main():
     """
     Main entry point for the auto-commit agent.
     """
-    print("Auto-commit agent started.")
+    try:
+        config = load_config()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Error loading configuration: {e}")
+        return
+
+    print(f"Auto-commit agent started. Watching '{config.watch_directory}'")
     event_queue = Queue()
 
-    # For now, we will just watch the current directory.
-    # This will be made configurable later.
-    path_to_watch = '.'
+    path_to_watch = config.watch_directory
     observer = start_watching(path_to_watch, event_queue)
 
     try:
