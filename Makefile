@@ -81,8 +81,26 @@ watch-tests: ## Watch for changes and run tests
 
 # Security checks
 security: ## Run security checks
+	python security_check.py
+
+security-bandit: ## Run Bandit security scanner
 	bandit -r src/
+
+security-safety: ## Check for vulnerable dependencies
 	safety check
+
+security-audit: ## Run comprehensive security audit
+	python security_check.py --check all
+
+# Maintenance tasks
+maintenance: ## Run code maintenance checks
+	python maintenance.py
+
+maintenance-clean: ## Clean cache and temporary files
+	python maintenance.py --check clean
+
+maintenance-imports: ## Check for unused imports
+	python maintenance.py --check imports
 
 # Documentation
 docs: ## Generate documentation
