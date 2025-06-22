@@ -1,10 +1,12 @@
 import time
-from watchdog.observers import Observer
+
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 
 class ChangeHandler(FileSystemEventHandler):
     """Puts all events on a queue."""
+
     def __init__(self, queue):
         self.queue = queue
         super().__init__()
@@ -30,4 +32,4 @@ def start_watching(path, queue):
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
-    print("Watcher stopped.") 
+    print("Watcher stopped.")

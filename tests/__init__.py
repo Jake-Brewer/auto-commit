@@ -1,1 +1,1 @@
-# Tests package for auto-commit project 
+# Tests package for auto-commit project

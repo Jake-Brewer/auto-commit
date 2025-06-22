@@ -10,9 +10,7 @@ def is_path_match(path: str, patterns: List[str]) -> bool:
     return False
 
 
-def should_process_path(
-    path: str, include: List[str], exclude: List[str]
-) -> bool:
+def should_process_path(path: str, include: List[str], exclude: List[str]) -> bool:
     """
     Determines if a file path should be processed based on include and
     exclude patterns. Exclude patterns take precedence over include patterns.
@@ -28,4 +26,4 @@ def should_process_path(
     if is_path_match(path, include):
         return True
 
-    return False 
+    return False

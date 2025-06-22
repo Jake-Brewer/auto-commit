@@ -165,10 +165,10 @@ jobs:
     
     - name: Run performance tests
       run: |
-        pytest tests/ -v -m "not integration" --benchmark-only || true
+        pytest tests/ -v -m "not integration"
     
     - name: Upload performance results
       uses: actions/upload-artifact@v3
       with:
         name: performance-results
-        path: .benchmarks/ 
+        path: .benchmarks/
